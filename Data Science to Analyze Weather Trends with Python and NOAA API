@@ -1,0 +1,76 @@
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# API token for NOAA website
+api_token = "Use your own API by opening an account"
+
+# Function to fetch weather data from NOAA API
+def fetch_weather_data(api_token, station_id, year):
+    base_url = "https://www.ncdc.noaa.gov/cdo-web/api/v2/data"
+    headers = {"token": api_token}
+    params = {
+        "datasetid": "GHCND",
+        "stationid": station_id,
+        "startdate": f"{year}-01-01",
+        "enddate": f"{year}-12-31",
+        "units": "metric",
+        "datatypeid": "TMAX",
+        "limit": 365,  # Assuming non-leap year
+    }
+    response = requests.get(base_url, headers=headers, params=params)
+    data = response.json()
+    return data["results"]
+
+# Chicago O'Hare International Airport weather station ID
+station_id = "GHCND:USW00094846"
+
+# Fetch temperature data for the year 2000
+weather_data = fetch_weather_data(api_token, station_id, 2000)
+
+# Create a pandas DataFrame from the fetched data
+df = pd.DataFrame(weather_data)
+df["date"] = pd.to_datetime(df["date"])
+
+# Calculate the 5-day moving average temperature
+df["moving_avg"] = df["value"].rolling(window=5, center=True).mean()
+
+# Identify extreme temperature days
+threshold = 30  # Set the threshold for extreme temperatures (adjust as needed)
+extreme_temp_days = df[df["moving_avg"] >= threshold]
+
+# Create DataFrame for extreme temperature days and their dates
+extreme_temp_df = pd.DataFrame({
+    "date": extreme_temp_days["date"],
+    "moving_avg": extreme_temp_days["moving_avg"]
+})
+
+# Display temperature data in a table
+print(df)
+
+# Plot temperature data in a line chart
+plt.figure(figsize=(18, 6))
+plt.plot(df["date"], df["value"], label="Temperature (°C)")
+plt.scatter(extreme_temp_days["date"], extreme_temp_days["value"], color="red", label="Extreme Temperature")
+plt.xlabel("Date")
+plt.ylabel("Temperature (°C)")
+plt.title("Temperature Data at Chicago O'Hare International Airport (2000)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Plot the 5-day moving average temperature
+plt.figure(figsize=(12, 6))
+plt.plot(df["date"], df["value"], label="Temperature (°C)")
+plt.plot(df["date"], df["moving_avg"], label="5-day Moving Average")
+plt.scatter(extreme_temp_days["date"], extreme_temp_days["value"], color="red", label="Extreme Temperature")
+plt.xlabel("Date")
+plt.ylabel("Temperature (°C)")
+plt.title("Temperature Data with 5-day Moving Average at Chicago O'Hare International Airport (2000)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Display the extreme temperature days and their dates in the DataFrame
+print(extreme_temp_df)
+#extreme_temp_df.to_excel("MA_2005_32C.xlsx", index=False)
